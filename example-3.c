@@ -73,7 +73,7 @@ gchar *escape_cequnce_block(char **text, gsize len, gsize escape, gsize block_si
 	while(i < len && (*text)[i])
 	{
 		
-		if( !(i % block_size) )
+		if( !(i % block_size) && i)
 		{
 			result[res_len++] = ' ';
 			result[res_len++] = '\n';
@@ -91,6 +91,7 @@ gchar *escape_cequnce_block(char **text, gsize len, gsize escape, gsize block_si
 		char c[3] = {0};
 		c[0] = result[res_len - 2];
 		c[1] = result[res_len - 1];
+		result[res_len++] = ' ';
 		printf("i = %ld, char = %s\n", i, c);
 		i += 2;
 	}
@@ -129,6 +130,7 @@ void activate_callback(GtkApplication *app, gpointer data)
 	gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(text_view), GTK_WRAP_NONE);
 	gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE);
 	gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(text_view), FALSE);
+	gtk_text_view_set_monospace(GTK_TEXT_VIEW(text_view), TRUE);
 	
 	
 	quran_file = g_file_new_for_path("./quran-simple-clean.txt");
@@ -144,7 +146,7 @@ void activate_callback(GtkApplication *app, gpointer data)
     }
 	len = adjust_quranic_text(&content, len + 1);
 	len = remove_space_new_line(&content, len + 1);
-	gchar *result = escape_cequnce_block(&content, len + 1, 10, 5);
+	gchar *result = escape_cequnce_block(&content, len + 1, 42, 100);
 	printf("%s\n", result);
 	gtk_text_buffer_set_text(text_buffet, result, -1);
 	
