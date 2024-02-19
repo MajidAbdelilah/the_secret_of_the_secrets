@@ -2,7 +2,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <pthread.h>
 
 int count_untill_pipe(char *str)
 {
@@ -74,20 +74,30 @@ gchar *remove_space_new_line(char **text, gsize len)
 	return result;
 }
 
-gchar *escape_cequnce_block(char **text, gsize len, gsize escape, gsize block_size)
+typedef struct eb_data{
+	char **text;
+	gsize len;
+	gsize escape;
+	gsize block_size;
+	gchar **output;
+} t_eb_data;
+
+void *escape_cequnce_block(void *data)
 {
+	t_eb_data d = *(t_eb_data*)data;
+
 	gsize i = 0;
-	escape *= 2;
+	d.escape *= 2;
 	// block_size += 1;
-	block_size *= 2;
-	gchar *result = calloc(len * (2 + (escape == 0)), 1);
+	d.block_size *= 2;
+	gchar *result = calloc(d.len * (2 + (d.escape == 0)), 1);
 	gsize res_len = 0;
 	
 	// #pragma omp parallel for
-	for(i = 0; i < len; i += 2)
+	for(i = 0; i < d.len; i += 2)
 	{
 		{
-			if( !(i % block_size) && i)
+			if( !(i % d.block_size) && i)
 			{
 				// #pragma omp critical
 				{
@@ -96,16 +106,16 @@ gchar *escape_cequnce_block(char **text, gsize len, gsize escape, gsize block_si
 				}
 			}
 			gsize j = 0;
-			while(j < escape)
+			while(j < d.escape)
 				j++;
-			if((i + j) >= len)
-				j = len - i;
+			if((i + j) >= d.len)
+				j = d.len - i;
 			// memmove((*text) + i, (*text) + i + j, len - (i + j));
 			i += j;
 			// #pragma omp critical
 			{
-				result[res_len++] = (*text)[i];
-				result[res_len++] = (*text)[i + 1];
+				result[res_len++] = (*d.text)[i];
+				result[res_len++] = (*d.text)[i + 1];
 			}
 			char c[3] = {0};
 			c[0] = result[res_len - 2];
@@ -115,7 +125,8 @@ gchar *escape_cequnce_block(char **text, gsize len, gsize escape, gsize block_si
 		}
 	}
 	result = realloc(result, res_len + 4);
-	return result;
+	(*d.output) = result;
+	return 0;
 }
 
 int ft_escap_space_strcmp(gchar *str1, gchar *str2)
@@ -139,18 +150,27 @@ int ft_escap_space_strcmp(gchar *str1, gchar *str2)
 	return str1[i] - str2[j];
 }
 
-bool find_word(char **text, gchar *word)
+typedef struct fw_data
 {
+	char **text;
+	gchar *word;
+	bool *res;
+}fw_data;
+
+void *find_word(void *data)
+{
+	fw_data d = *(fw_data*)data;
 	gsize i = 0;
-	gsize word_len = strlen(word);
-	while((*text)[i + word_len])
+	gsize word_len = strlen(d.word);
+	while((*d.text)[i + word_len])
 	{
-		if(ft_escap_space_strcmp((*text) + i, word) == 0)
+		if(ft_escap_space_strcmp((*d.text) + i, d.word) == 0)
 		{
-			return 1;
+			(*d.res) = 1;
 		}
 		i++;
 	}
+	(*d.res) = 0;
 	return 0;
 }
 
@@ -196,30 +216,99 @@ void activate_callback(GtkApplication *app, gpointer data)
 	gchar *result1 = remove_space_new_line(&content, len + 1);
 	printf("result1 = %s\n", result1);
 	
-	int ret = 0;
+	bool ret1 = 0;
+	bool ret2 = 0;
+	bool ret3 = 0;
+	bool ret4 = 0;
+	
 	gsize block_size = 1;
-	gsize escape = 1;
-	gchar *result2 = NULL;
-	while(ret != 1)
+	gsize escape = 2;
+	gchar *result21 = NULL;
+	gchar *result22 = NULL;
+	gchar *result23 = NULL;
+	gchar *result24 = NULL;
+	
+	gchar *result_final = NULL;
+	
+	while(!ret1 && !ret2 && !ret3 && !ret4 && escape >= 0 && block_size >= 1)
 	{
-		result2 = escape_cequnce_block(&result1, strlen(result1) + 1, escape, block_size);
-		printf("%s\n", result2);
-		ret = find_word(&result2,  "ايلول");
-		if( !ret )
+		pthread_t t1;
+		pthread_t t2;
+		pthread_t t3;
+
+		t_eb_data data[10] = {{&result1, strlen(result1) + 1, escape, block_size, &result21}, 
+								{&result1, strlen(result1) + 1, escape, block_size + 1, &result22}, 
+								{&result1, strlen(result1) + 1, escape, block_size + 2, &result23},
+								{&result1, strlen(result1) + 1, escape, block_size + 3, &result24}};
+		pthread_create(&t1, NULL, escape_cequnce_block, &data[0]);// escape_cequnce_block(&result1, strlen(result1) + 1, escape, block_size);
+		pthread_create(&t2, NULL, escape_cequnce_block, &data[1]);// escape_cequnce_block(&result1, strlen(result1) + 1, escape, block_siz;
+		pthread_create(&t3, NULL, escape_cequnce_block, &data[2]);// escape_cequnce_block(&result1, strlen(result1) + 1, escape, block_size);
+		escape_cequnce_block(&data[3]);
+		
+		pthread_join(t1, NULL);
+		pthread_join(t2, NULL);
+		pthread_join(t3, NULL);
+		
+		
+		printf("escape = %ld, block_size = %ld\n", escape, block_size);
+		printf("escape = %ld, block_size = %ld\n", escape, block_size + 1);
+		printf("escape = %ld, block_size = %ld\n", escape, block_size + 2);
+		printf("escape = %ld, block_size = %ld\n", escape, block_size + 3);
+		
+		fw_data fw_d[10] = {{&result21,  "الإله", &ret1}, {&result22,  "الإله", &ret2}, {&result23,  "الإله", &ret3}, {&result24,  "الإله", &ret4}};
+		pthread_create(&t1, NULL, find_word, &fw_d[0]);//ret1 = find_word(&result2,  "القذافي");
+		pthread_create(&t2, NULL, find_word, &fw_d[1]);//ret1 = find_word(&result2,  "القذافي");
+		pthread_create(&t3, NULL, find_word, &fw_d[2]);//ret1 = find_word(&result2,  "القذافي");
+		find_word(&fw_d[3]);
+		pthread_join(t1, NULL);
+		pthread_join(t2, NULL);
+		pthread_join(t3, NULL);
+		
+		if( !ret1 && !ret2 && !ret3 && !ret4 )
 		{
-			block_size++;
-			if(block_size == 1000)
+			if((block_size) >= 3000)
 			{
 				block_size = 1;
-				escape++;
-				if(escape == 1000)
+				if((escape) >= 10000)
 					exit(0) ;
+				escape++;
 			}
-			free(result2);
+			block_size += 4;
+			free(result21);
+			free(result22);
+			free(result23);
+			free(result24);
+		}else {
+			if(ret1)
+			{
+				// free(result21);
+				free(result22);
+				free(result23);
+				free(result24);
+				result_final = result21;
+			}else if(ret2){
+				free(result21);
+				// free(result22);
+				free(result23);
+				free(result24);
+				result_final = result22;		
+			}else if(ret3){
+				free(result21);
+				free(result22);
+				// free(result23);
+				free(result24);
+				result_final = result23;		
+			}else if(ret4){
+				free(result21);
+				free(result22);
+				free(result23);
+				// free(result24);
+				result_final = result24;		
+			}
 		}
 	}
 
-	gtk_text_buffer_set_text(text_buffet, result2, -1);
+	gtk_text_buffer_set_text(text_buffet, result_final, -1);
 	
 	scrool_window =  gtk_scrolled_window_new();
 	gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrool_window), text_view);
