@@ -1,5 +1,6 @@
 #include <gtk/gtk.h>
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -85,7 +86,7 @@ typedef struct eb_data{
 void *escape_cequnce_block(void *data)
 {
 	t_eb_data d = *(t_eb_data*)data;
-
+	gchar *text = *d.text;
 	gsize i = 0;
 	d.escape *= 2;
 	// block_size += 1;
@@ -101,7 +102,7 @@ void *escape_cequnce_block(void *data)
 			{
 				// #pragma omp critical
 				{
-					result[res_len++] = ' ';
+					//result[res_len++] = ' ';
 					result[res_len++] = '\n';
 				}
 			}
@@ -110,18 +111,11 @@ void *escape_cequnce_block(void *data)
 				j++;
 			if((i + j) >= d.len)
 				j = d.len - i;
-			// memmove((*text) + i, (*text) + i + j, len - (i + j));
-			i += j;
-			// #pragma omp critical
-			{
-				result[res_len++] = (*d.text)[i];
-				result[res_len++] = (*d.text)[i + 1];
-			}
-			char c[3] = {0};
-			c[0] = result[res_len - 2];
-			c[1] = result[res_len - 1];
-			result[res_len++] = ' ';
-			// printf("i = %ld, char = %s\n", i, c);
+			(text) += j;
+			if(text[i] == 0)
+				break;
+			result[res_len++] = (text)[i];
+			result[res_len++] = (text)[i + 1];
 		}
 	}
 	result = realloc(result, res_len + 4);
@@ -162,21 +156,24 @@ void *find_word(void *data)
 	fw_data d = *(fw_data*)data;
 	gsize i = 0;
 	gsize word_len = strlen(d.word);
-	while((*d.text)[i + word_len])
+	gsize text_len = strlen((*d.text));
+	(*d.res) = 0;
+	while((i + word_len - 1) < text_len && (*d.text)[i + word_len - 1])
 	{
-		if(ft_escap_space_strcmp((*d.text) + i, d.word) == 0)
+		// printf("%s, %s\n", (*d.text) + i, d.word);
+		if(strncmp((*d.text) + i, d.word, word_len) == 0)
 		{
 			(*d.res) = 1;
+			break ;
 		}
 		i++;
 	}
-	(*d.res) = 0;
 	return 0;
 }
 
-void activate_callback(GtkApplication *app, gpointer data)
+void activate_callback(GtkApplication *app, gpointer data_ptr)
 {
-	(void)data;
+	(void)data_ptr;
 	GtkWidget *window = NULL;
 	GtkWidget *text_view = NULL;
 	GtkTextBuffer *text_buffet = NULL;
@@ -216,30 +213,33 @@ void activate_callback(GtkApplication *app, gpointer data)
 	gchar *result1 = remove_space_new_line(&content, len + 1);
 	printf("result1 = %s\n", result1);
 	
-	bool ret1 = 0;
-	bool ret2 = 0;
-	bool ret3 = 0;
-	bool ret4 = 0;
+	bool *ret1 = calloc(sizeof(bool), 1);
+	bool *ret2 = calloc(sizeof(bool), 1);
+	bool *ret3 = calloc(sizeof(bool), 1);
+	bool *ret4 = calloc(sizeof(bool), 1);
 	
 	gsize block_size = 1;
-	gsize escape = 2;
+	gsize escape = 1;
 	gchar *result21 = NULL;
 	gchar *result22 = NULL;
 	gchar *result23 = NULL;
 	gchar *result24 = NULL;
 	
 	gchar *result_final = NULL;
-	
-	while(!ret1 && !ret2 && !ret3 && !ret4 && escape >= 0 && block_size >= 1)
+	t_eb_data data[10] = {0};
+	fw_data fw_d[10];
+
+	while(!(*ret1) && !(*ret2) && !(*ret3) && !(*ret4) && escape >= 0 && block_size >= 1)
 	{
 		pthread_t t1;
 		pthread_t t2;
 		pthread_t t3;
 
-		t_eb_data data[10] = {{&result1, strlen(result1) + 1, escape, block_size, &result21}, 
-								{&result1, strlen(result1) + 1, escape, block_size + 1, &result22}, 
-								{&result1, strlen(result1) + 1, escape, block_size + 2, &result23},
-								{&result1, strlen(result1) + 1, escape, block_size + 3, &result24}};
+		data[0] = (t_eb_data){&result1, strlen(result1) + 1, escape, block_size, &result21};
+		data[1] = (t_eb_data){&result1, strlen(result1) + 1, escape, block_size + 1, &result22};
+		data[2] = (t_eb_data){&result1, strlen(result1) + 1, escape, block_size + 2, &result23};
+		data[3] = (t_eb_data){&result1, strlen(result1) + 1, escape, block_size + 3, &result24};
+
 		pthread_create(&t1, NULL, escape_cequnce_block, &data[0]);// escape_cequnce_block(&result1, strlen(result1) + 1, escape, block_size);
 		pthread_create(&t2, NULL, escape_cequnce_block, &data[1]);// escape_cequnce_block(&result1, strlen(result1) + 1, escape, block_siz;
 		pthread_create(&t3, NULL, escape_cequnce_block, &data[2]);// escape_cequnce_block(&result1, strlen(result1) + 1, escape, block_size);
@@ -254,8 +254,27 @@ void activate_callback(GtkApplication *app, gpointer data)
 		printf("escape = %ld, block_size = %ld\n", escape, block_size + 1);
 		printf("escape = %ld, block_size = %ld\n", escape, block_size + 2);
 		printf("escape = %ld, block_size = %ld\n", escape, block_size + 3);
+		// printf("%s\n", *result21);
+		// printf("%s\n", *result22);
+		// printf("%s\n", *result23);
+		// printf("%s\n", *result24);
 		
-		fw_data fw_d[10] = {{&result21,  "الإله", &ret1}, {&result22,  "الإله", &ret2}, {&result23,  "الإله", &ret3}, {&result24,  "الإله", &ret4}};
+		gchar str[] =  "محمدبن";
+		// gchar *test_str = "كدخجاتالقرانقمخذحكق";
+		// gchar *str_test = "القران";
+		// gchar **str_test_ptr = &str_test;
+		// fw_data *fw_d2 =malloc(sizeof(fw_data) * 10);
+		// fw_d2[0] =  (fw_data){str_test_ptr, str, ret1}; //{&result22,  str, &ret2}, {&result23,   str, &ret3}, {&result24,  str, &ret4}};
+		// find_word(fw_d2);
+		// if(ret1)
+		// {
+		// 	return ;
+		// }
+		// printf("%s\n", result21);
+		fw_d[0] = (fw_data){&result21, str, ret1};
+		fw_d[1] = (fw_data){&result22,  str, ret2};
+		fw_d[2] = (fw_data){&result23,   str, ret3};
+		fw_d[3] = (fw_data){&result24,  str, ret4};
 		pthread_create(&t1, NULL, find_word, &fw_d[0]);//ret1 = find_word(&result2,  "القذافي");
 		pthread_create(&t2, NULL, find_word, &fw_d[1]);//ret1 = find_word(&result2,  "القذافي");
 		pthread_create(&t3, NULL, find_word, &fw_d[2]);//ret1 = find_word(&result2,  "القذافي");
@@ -263,10 +282,15 @@ void activate_callback(GtkApplication *app, gpointer data)
 		pthread_join(t1, NULL);
 		pthread_join(t2, NULL);
 		pthread_join(t3, NULL);
-		
-		if( !ret1 && !ret2 && !ret3 && !ret4 )
+
+
+		// find_word((fw_data[10]){{&test_str, str, &te}});
+
+		printf(" %d, %d, %d, %d\n", (*ret1), (*ret2), (*ret3), (*ret4));
+
+		if( !(*ret1) && !(*ret2) && !(*ret3) && !(*ret4) )
 		{
-			if((block_size) >= 3000)
+			if((block_size) >= 1000)
 			{
 				block_size = 1;
 				if((escape) >= 10000)
@@ -279,32 +303,34 @@ void activate_callback(GtkApplication *app, gpointer data)
 			free(result23);
 			free(result24);
 		}else {
-			if(ret1)
+			if((*ret1))
 			{
 				// free(result21);
 				free(result22);
 				free(result23);
 				free(result24);
 				result_final = result21;
-			}else if(ret2){
+			}else if((*ret2)){
 				free(result21);
 				// free(result22);
 				free(result23);
 				free(result24);
 				result_final = result22;		
-			}else if(ret3){
+			}else if((*ret3)){
 				free(result21);
 				free(result22);
 				// free(result23);
 				free(result24);
 				result_final = result23;		
-			}else if(ret4){
+			}else if((*ret4)){
 				free(result21);
 				free(result22);
 				free(result23);
 				// free(result24);
 				result_final = result24;		
 			}
+			// printf("%s\n", *result24);
+			break;
 		}
 	}
 
