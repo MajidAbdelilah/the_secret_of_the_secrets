@@ -149,19 +149,49 @@ typedef struct fw_data
 	char **text;
 	gchar *word;
 	bool *res;
+	gsize len;
+	gsize line_len;
 }fw_data;
 
-void *find_word(void *data)
+void *find_word_x(void *data)
 {
 	fw_data d = *(fw_data*)data;
 	gsize i = 0;
 	gsize word_len = strlen(d.word);
-	gsize text_len = strlen((*d.text));
+	gsize text_len = d.len;
 	(*d.res) = 0;
 	while((i + word_len - 1) < text_len && (*d.text)[i + word_len - 1])
 	{
 		// printf("%s, %s\n", (*d.text) + i, d.word);
 		if(strncmp((*d.text) + i, d.word, word_len) == 0)
+		{
+			(*d.res) = 1;
+			break ;
+		}
+		i++;
+	}
+	return 0;
+}
+
+void *find_word_y(void *data)
+{
+	fw_data d = *(fw_data*)data;
+	gsize i = 0;
+	gsize word_len = strlen(d.word);
+	gsize text_len = d.len;
+	gchar text_str[4096] = {0};
+	(*d.res) = 0;
+	i = 0;
+	while((i * d.line_len + word_len * d.line_len - 1) < text_len && (*d.text)[i * d.line_len + word_len * d.line_len - 1])
+	{
+		gsize j = 0;
+		while(j < word_len)
+		{
+			text_str[j * d.line_len] = d.word[j];
+			j++;
+		}
+		// printf("%s, %s\n", (*d.text) + i, d.word);
+		if(strncmp(text_str, d.word, word_len) == 0)
 		{
 			(*d.res) = 1;
 			break ;
