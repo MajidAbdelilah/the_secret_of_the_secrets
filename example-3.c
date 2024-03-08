@@ -102,7 +102,7 @@ void *escape_cequnce_block(void *data)
 			{
 				// #pragma omp critical
 				{
-					//result[res_len++] = ' ';
+					// result[res_len++] = ' ';
 					result[res_len++] = '\n';
 				}
 			}
@@ -116,6 +116,7 @@ void *escape_cequnce_block(void *data)
 				break;
 			result[res_len++] = (text)[i];
 			result[res_len++] = (text)[i + 1];
+			result[res_len++] = ' ';
 		}
 	}
 	result = realloc(result, res_len + 4);
@@ -184,13 +185,15 @@ void *find_word_y(void *data)
 	gsize a = 0;
 	gchar sub[100000] = {0};
 	gsize word_len = strlen(d.word);
-	while(((x * y) + word_len) < d.text_len)
+	while(x < d.line_len)
 	{
 		y = 0;
-		g_print("(d.text_len / d.line_len) = %ld\n", ((d.text_len) / d.line_len));
+		// g_print("(d.text_len / d.line_len) = %ld\n", ((d.text_len) / d.line_len));
 		while((y + word_len / 2) <= (d.text_len / d.line_len))
 		{
 			a = 0;
+			if((*d.text)[x] == ' ' || (*d.text)[x + 1] == ' ')
+				x++;
 			while(a < word_len)
 			{
 				sub[a] = (*d.text)[(y + (a / 2)) * d.line_len + x];
@@ -325,7 +328,7 @@ void activate_callback(GtkApplication *app, gpointer data_ptr)
     	              file_error->message);
     		return;
     	}
-	
+		gchar *str2 = "بنسلمان";
 	
 		// gchar *test_str = "كدخجاتالقرانقمخذحكق";
 		// gchar *str_test = "القران";
@@ -338,29 +341,29 @@ void activate_callback(GtkApplication *app, gpointer data_ptr)
 		// 	return ;
 		// }
 		// printf("%s\n", result21);
-		gsize *first_index = malloc(sizeof(gsize));
-		gsize *result_len = malloc(sizeof(gsize));
-		fw_d[0] = (fw_data){&result21, str, ret1, strlen(result21), index_till_nl(result21), first_index, result_len};
-		fw_d[1] = (fw_data){&result22,  str, ret2, strlen(result22), index_till_nl(result22), first_index, result_len};
-		fw_d[2] = (fw_data){&result23,   str, ret3, strlen(result23), index_till_nl(result23), first_index, result_len};
-		// fw_d[3] = (fw_data){&result24,  str, ret4, strlen(result24), index_till_nl(result24)};
-		fw_d[3] = (fw_data){&str,  "محمد", ret4, str_len + 1, index_till_nl(str), first_index, result_len};
-		pthread_create(&t1, NULL, find_word_x, &fw_d[0]);//ret1 = find_word(&result2,  "القذافي");
-		pthread_create(&t2, NULL, find_word_x, &fw_d[1]);//ret1 = find_word(&result2,  "القذافي");
-		pthread_create(&t3, NULL, find_word_x, &fw_d[2]);//ret1 = find_word(&result2,  "القذافي");
+		gsize *x = calloc(sizeof(gsize), 4);
+		gsize *y = calloc(sizeof(gsize), 4);
+		fw_d[0] = (fw_data){&result21, str2, ret1, strlen(result21) + 2, index_till_nl(result21),  &x[0], &y[0]};
+		fw_d[1] = (fw_data){&result22,  str2, ret2, strlen(result22) + 2, index_till_nl(result22),  &x[1], &y[1]};
+		fw_d[2] = (fw_data){&result23,   str2, ret3, strlen(result23) + 2, index_till_nl(result23),  &x[2], &y[2]};
+		// fw_d[3] = (fw_data){&result24,  str2, ret4, strlen(result24), index_till_nl(result24)};
+		fw_d[3] = (fw_data){&result24,  str2, ret4, strlen(result24) + 2, index_till_nl(result24), &x[3], &y[3]};
+		pthread_create(&t1, NULL, find_word_y, &fw_d[0]);//ret1 = find_word(&result2,  "القذافي");
+		pthread_create(&t2, NULL, find_word_y, &fw_d[1]);//ret1 = find_word(&result2,  "القذافي");
+		pthread_create(&t3, NULL, find_word_y, &fw_d[2]);//ret1 = find_word(&result2,  "القذافي");
 		find_word_y(&fw_d[3]);
 		pthread_join(t1, NULL);
 		pthread_join(t2, NULL);
 		pthread_join(t3, NULL);
 
 
-		// find_word((fw_data[10]){{&test_str, str, &te}});
+		// find_word((fw_data[10]){{&test_str, str2, &te}});
 
 		printf(" %d, %d, %d, %d\n", (*ret1), (*ret2), (*ret3), (*ret4));
 
 		if( !(*ret1) && !(*ret2) && !(*ret3) && !(*ret4) )
 		{
-			if((block_size) >= 1000)
+			if((block_size) >= 10000)
 			{
 				block_size = 1;
 				if((escape) >= 10000)
@@ -380,33 +383,35 @@ void activate_callback(GtkApplication *app, gpointer data_ptr)
 				free(result23);
 				free(result24);
 				result_final = result21;
+				g_print("position = x = %ld, y = %ld\n", x[0],  y[0]);
 			}else if((*ret2)){
 				free(result21);
 				// free(result22);
 				free(result23);
 				free(result24);
 				result_final = result22;		
+				g_print("position = x = %ld, y = %ld\n", x[1],  y[1]);
 			}else if((*ret3)){
 				free(result21);
 				free(result22);
 				// free(result23);
 				free(result24);
 				result_final = result23;		
+				g_print("position = x = %ld, y = %ld\n", x[2],  y[2]);
 			}else if((*ret4)){
 				free(result21);
 				free(result22);
 				free(result23);
 				// free(result24);
 				result_final = result24;		
+				g_print("position = x = %ld, y = %ld\n", x[3],  y[3]);
 			}
 			// printf("%s\n", *result24);
 			break;
 		}
 	}
 
-	g_print("position = x = %ld, y = %ld\n", *fw_d[3].result_index_x,  *fw_d[3].result_index_y);
 	gtk_text_buffer_set_text(text_buffet, result_final, -1);
-	
 	scrool_window =  gtk_scrolled_window_new();
 	gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrool_window), text_view);
 
