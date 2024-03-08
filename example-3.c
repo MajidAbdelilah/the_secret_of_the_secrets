@@ -12,7 +12,10 @@ int count_untill_pipe(char *str)
 	while(str[i] && str[i] != '\n')
 	{
 		if(str[i] == '|')
+		{
 			res = i;
+			
+		}
 		i++;
 	}
 	return res + 1;
@@ -26,6 +29,7 @@ gsize adjust_quranic_text(char **text, gsize len)
 	while((*text)[i])
 	{
 		int skip_count = count_untill_pipe((*text) + i);
+		printf("len = %ld, i = %ld, skip = %d\n", len, i, skip_count);;
 		// printf("skip = %d, i = %ld, len = %ld\n", skip_count, i, len);
 		memmove((*text) + i, (*text) + i + skip_count, len - (i + skip_count));
 		while((*text)[i] && (*text)[i] != '\n')
@@ -423,13 +427,3 @@ void activate_callback(GtkApplication *app, gpointer data_ptr)
 	gtk_window_present(GTK_WINDOW(window));
 }
 
-int main(int arg_num, char **args)
-{
-	GtkApplication *app;
-	int status;
-	app = gtk_application_new("org.gtk4.exapmles", G_APPLICATION_DEFAULT_FLAGS);
-	g_signal_connect(app, "activate", G_CALLBACK(activate_callback), NULL);
-	status = g_application_run(G_APPLICATION(app), arg_num, args);
-	g_object_unref(app);
-	return status;
-}
